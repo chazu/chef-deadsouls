@@ -1,0 +1,85 @@
+#!/bin/sh
+# Updated by Raudhrskal, 10.2006-01.2007, 07.2008
+
+#For ability to shutdown the mud, change line in /secure/cmds/admins/shutdown.c
+#from:          call_out( (: shutdown :), 1);
+#to:            call_out( (: shutdown :), 1, -1);
+#and, if you want (afaik void ShutDown() isn't called anywhere but...)
+#from           shutdown();
+#to             shutdown(-1);
+#then after updating that file and /daemon/command 'end' will reboot (as before)
+#and shutdown will shutdown. If you want to use the 'shutdown' command
+#for rebooting, you can add some parameter check, or simply copy shutdown.c
+#to e.g. haltmud.c and change the call_out there.
+
+# Specify your mud dir here.
+MUDHOME="/srv/ds/ds3.6";
+
+#This shouldn't be required now, but won't harm. Still useful for old versions.
+LANG=C;
+LANGUAGE=C;
+LC_ALL=C;
+
+export LANG LANGUAGE LC_ALL MUDHOME;
+
+umask 007;
+
+ulimit -n 1024;
+
+#Handle Ctrl-C & friends somewhat gracefully. Allow the script to continue and kill addr_server.
+#Note that these are signals the _shell_ receives, not the ones received by the driver.
+#And handling shell's SIGSEGV in a shell script is a _poor_ idea.
+trap 'echo "$0: `date`: SIGHUP received, exiting...";' HUP #1
+trap 'echo "$0: `date`: SIGINT received, exiting...";' INT #2
+trap 'echo "$0: `date`: SIGQUIT received, exiting...";' QUIT #3
+trap 'echo "$0: `date`: SIGPIPE received, exiting...";' PIPE #13
+
+echo "$0: `date`: Job starting...";
+
+if [ $MUDHOME ] && [ -x $MUDHOME/bin/addr_server ];
+        then #Run it in background
+        echo "$0: `date`: Running addr_server...";
+        $MUDHOME/bin/addr_server 8099 & #change port if you need to - 8099 is since 2.3a1, older used 9999
+        addrpid=$!; #Catch the process ID
+        echo "$0: `date`: addr_server PID is" $addrpid;
+fi
+
+count=1; #boot count
+retv=0;  #./driver return value
+
+echo "$0: `date`: Entering loop.";
+
+#Choose one option:
+while [ $retv = "0" ]; do #continue ONLY if the driver exited gracefully - not by signal, not by efun shutdown(-1)
+#while [ $retv != "255" ]; do #continue ALWAYS, even if the driver exited by signal, halt ONLY after efun shutdown(-1)
+
+    echo "$0: `date`: Boot count:" $count;
+
+    if [ $MUDHOME ] && [ -x $MUDHOME/bin/driver ]  && [ -f $MUDHOME/bin/mudos.cfg ];
+        then
+            $MUDHOME/bin/driver $MUDHOME/bin/mudos.cfg;
+                retv=$?; #catch the return value
+                    echo "$0: `date`: Driver exit. Code" $retv;
+    elif [ -x ./driver ]  && [ -f ./mudos.cfg ];
+        then
+            ./driver ./mudos.cfg;
+                retv=$?; #catch the return value
+                    echo "$0: `date`: Driver exit. Code" $retv;
+    else
+        retv=255; #exit
+            echo "$0: `date`: Can't find driver and/or mudos.cfg!";
+                break;
+    fi;
+    count=$(($count+1));
+    sleep 5; #this won't hurt, and sometimes even helps
+done
+
+echo "$0: `date`: Exiting loop.";
+
+if [ $addrpid ]; #We started it?
+then
+    echo "$0: `date`: Killing addr_server...";
+    kill $addrpid;
+fi
+
+echo "$0: `date`: End of job.";
