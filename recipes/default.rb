@@ -8,6 +8,13 @@
 
 package "p7zip-full"
 
+cookbook_file "/tmp/ds3.6.zip" do
+  source "files/ds3.6.zip"
+  owner "root"
+  group "root"
+  not_if { File.exists? "/tmp/ds3.6.zip" }
+end
+
 execute "cd /tmp && wget http://lpmuds.net/files/deadsouls/ds3.6.zip" do
   user "root"
   not_if { File.exists? "/tmp/ds3.6.zip" }
