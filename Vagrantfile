@@ -1,6 +1,5 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
-
 Vagrant.configure("2") do |config|
   # All Vagrant configuration is done here. The most common configuration
   # options are documented and commented below. For a complete reference,
@@ -63,6 +62,8 @@ Vagrant.configure("2") do |config|
   config.berkshelf.enabled = true
 
   config.vm.network :forwarded_port, guest: 80, host: 8080
+  config.vm.network :forwarded_port, guest: 6666, host: 6666
+
   config.omnibus.chef_version = :latest
 
   config.vm.provision :chef_solo do |chef|
@@ -78,7 +79,7 @@ Vagrant.configure("2") do |config|
     chef.run_list = [
                      "recipe[apt::default]",
                      "recipe[build-essential::default]",
-                     "recipe[dead_souls::default]"
+                     "recipe[dead_souls::discworld]"
     ]
   end
 end

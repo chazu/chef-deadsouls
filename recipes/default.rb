@@ -9,7 +9,7 @@
 package "p7zip-full"
 
 cookbook_file "/tmp/ds3.6.zip" do
-  source "files/ds3.6.zip"
+  source "ds3.6.zip"
   owner "root"
   group "root"
   not_if { File.exists? "/tmp/ds3.6.zip" }
